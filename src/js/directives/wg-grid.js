@@ -93,11 +93,20 @@
     }
 
 
-    function emitUpdatePosition(widget) {
-      $scope.$emit('wg-update-position', {
-        index: getWidgetIndex(widget),
-        newPosition: widget.getPosition()
-      });
+    function emitUpdatePosition(widget, failedToFindPosition) {
+      if (failedToFindPosition) {
+        $scope.$emit('wg-update-position', {
+          index: getWidgetIndex(widget),
+          newPosition: widget.getPosition(),
+          Success: false
+        });
+      } else {
+        $scope.$emit('wg-update-position', {
+          index: getWidgetIndex(widget),
+          newPosition: widget.getPosition(),
+          Success: true
+        });
+      }
     }
 
     function assessAvailableGridSpace() {

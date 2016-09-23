@@ -1,5 +1,5 @@
 /**
- * @license angular-widget-grid v0.2.5
+ * @license angular-widget-grid v0.3.0
  * (c) 2016 Patrick Buergin
  * License: MIT
  * https://github.com/patbuergin/angular-widget-grid
@@ -227,11 +227,20 @@
     }
 
 
-    function emitUpdatePosition(widget) {
-      $scope.$emit('wg-update-position', {
-        index: getWidgetIndex(widget),
-        newPosition: widget.getPosition()
-      });
+    function emitUpdatePosition(widget, failedToFindPosition) {
+      if (failedToFindPosition) {
+        $scope.$emit('wg-update-position', {
+          index: getWidgetIndex(widget),
+          newPosition: widget.getPosition(),
+          Success: false
+        });
+      } else {
+        $scope.$emit('wg-update-position', {
+          index: getWidgetIndex(widget),
+          newPosition: widget.getPosition(),
+          Success: true
+        });
+      }
     }
 
     function assessAvailableGridSpace() {
@@ -394,9 +403,9 @@
           eventMove = 'mousemove touchmove';
           eventUp = 'mouseup touchend touchcancel';
         }
-        
+
         element.on(eventDown, onDown);
-        
+
         function onDown(event) {
           event.preventDefault();
           if (angular.isObject(event.originalEvent)) {
@@ -450,8 +459,8 @@
             }
 
             // normalize the drag position
-            var dragPositionX = Math.round(event.clientX) - gridPositions.left,
-                dragPositionY = Math.round(event.clientY) - gridPositions.top;
+            var dragPositionX = Math.round(event.pageX) - gridPositions.left,
+                dragPositionY = Math.round(event.pageY) - gridPositions.top;
 
             desiredPosition.top = Math.min(Math.max(dragPositionY - moverOffset.top, 0), gridPositions.height - startRender.height - 1);
             desiredPosition.left = Math.min(Math.max(dragPositionX - moverOffset.left, 0), gridPositions.width - startRender.width - 1);
@@ -517,7 +526,7 @@
 
           while (path.hasNext()) {
             var currPos = path.next();
-            
+
             var targetArea = {
               top: currPos.top,
               left: currPos.left,
@@ -596,9 +605,9 @@
       },
       controller: ['$attrs', '$parse', '$scope', function ($attrs, $parse, $scope) {
         var vm = this;
-        
+
         var DEFAULT_DIRECTIONS = ['NW', 'N', 'NE', 'E', 'SE', 'S', 'SW', 'W'];
-        
+
         vm.getResizeDirections = function () {
             var attrValue = $parse($attrs.wgResizable)($scope);
             return attrValue && attrValue.directions ? attrValue.directions : DEFAULT_DIRECTIONS;
@@ -612,14 +621,14 @@
   angular.module('widgetGrid').directive('wgResizer', ['$document', function ($document) {
     var MIN_HEIGHT = 42,
         MIN_WIDTH = 42;
-    
+
     return {
       restrict: 'A',
       require: ['^wgGrid', '^wgResizable'],
       link: function (scope, element, attrs, ctrls) {
         var gridCtrl = ctrls[0],
             resizableCtrl = ctrls[1];
-        
+
         var eventDown, eventMove, eventUp;
         if (window.navigator.pointerEnabled) {
           eventDown = 'pointerdown';
@@ -630,7 +639,7 @@
           eventMove = 'mousemove touchmove';
           eventUp = 'mouseup touchend touchcancel';
         }
-        
+
         var draggers = {
           N: { up: true, right: false, down: false, left: false, element: angular.element('<div class="wg-resize wg-resize-axis wg-resize-n"></div>') },
           E: { up: false, right: true, down: false, left: false, element: angular.element('<div class="wg-resize wg-resize-axis wg-resize-e"></div>') },
@@ -641,7 +650,7 @@
           SE: { up: false, right: true, down: true, left: false, element: angular.element('<div class="wg-resize wg-resize-diag wg-resize-se"></div>') },
           SW: { up: false, right: false, down: true, left: true, element: angular.element('<div class="wg-resize wg-resize-diag wg-resize-sw"></div>') }
         };
-        
+
         var directions = resizableCtrl.getResizeDirections();
         for (var i = 0; i < directions.length; i++) {
           var dragger = draggers[angular.uppercase(directions[i])];
@@ -650,31 +659,31 @@
             element.append(dragger.element);
           }
         }
-        
+
         function registerDragHandler(dragger, containerElement) {
           dragger.element.on(eventDown, onDown);
-          
+
           function onDown(event) {
             event.preventDefault();
-            
+
             if (angular.isObject(event.originalEvent)) {
               event = event.originalEvent;
             }
 
             dragger.element.addClass('dragging');
-            
+
             var container = containerElement[0],
                 widgetContainer = container.parentElement,
                 widgetElement = angular.element(widgetContainer);
-            
+
             widgetElement.addClass('wg-resizing');
-            
+
             var startPos = {}; // grid positions
             startPos.top = scope.widget.top;
             startPos.left = scope.widget.left;
             startPos.bottom = startPos.top + scope.widget.height - 1;
             startPos.right = startPos.left + scope.widget.width - 1;
-            
+
             var startRender = {}; // pixel values
             startRender.top = Math.ceil(widgetContainer.offsetTop);
             startRender.left = Math.ceil(widgetContainer.offsetLeft);
@@ -682,10 +691,10 @@
             startRender.width = Math.floor(container.offsetWidth);
             startRender.bottom = startRender.top + startRender.height;
             startRender.right = startRender.left + startRender.width;
-            
+
             event.offsetX = event.offsetX || event.layerX;
             event.offsetY = event.offsetY || event.layerY;
-            
+
             var delta = { top: 0, right: 0, bottom: 0, left: 0 };
             var draggerOffset = {
               top: event.offsetY,
@@ -693,28 +702,28 @@
               bottom: event.offsetY - dragger.element[0].offsetHeight,
               right: event.offsetX - dragger.element[0].offsetWidth
             };
-            
+
             var gridPositions = gridCtrl.getPositions();
-            
+
             $document.on(eventMove, onMove);
             $document.on(eventUp, onUp);
-            
+
             function onMove(event) {
               event.preventDefault();
-                        
+
               if (angular.isObject(event.originalEvent)) {
                 event = event.originalEvent;
               }
-              
+
               if (event.touches) {
                 event.clientX = event.touches[0].clientX;
                 event.clientY = event.touches[0].clientY;
               }
-              
+
               // normalize the drag position
-              var dragPositionX = Math.round(event.clientX) - gridPositions.left,
-                  dragPositionY = Math.round(event.clientY) - gridPositions.top;
-              
+              var dragPositionX = Math.round(event.pageX) - gridPositions.left,
+                  dragPositionY = Math.round(event.pageY) - gridPositions.top;
+
               if (dragger.up) {
                 delta.top = Math.min(Math.max(dragPositionY - draggerOffset.top, 0), gridPositions.height) - startRender.top;
                 delta.top = Math.min(delta.top, startRender.height - MIN_HEIGHT);
@@ -722,18 +731,18 @@
                 delta.bottom = startRender.bottom - Math.min(Math.max(dragPositionY - draggerOffset.bottom, 0), gridPositions.height);
                 delta.bottom = Math.min(delta.bottom, startRender.height - MIN_HEIGHT);
               }
-              
+
               if (dragger.left) {
-                delta.left = Math.min(Math.max(dragPositionX - draggerOffset.left, 0), gridPositions.width) - startRender.left; 
+                delta.left = Math.min(Math.max(dragPositionX - draggerOffset.left, 0), gridPositions.width) - startRender.left;
                 delta.left = Math.min(delta.left, startRender.width - MIN_WIDTH);
               } else if (dragger.right) {
-                delta.right = startRender.right - Math.min(Math.max(dragPositionX - draggerOffset.right, 0), gridPositions.width); 
+                delta.right = startRender.right - Math.min(Math.max(dragPositionX - draggerOffset.right, 0), gridPositions.width);
                 delta.right = Math.min(delta.right, startRender.width - MIN_WIDTH);
               }
-              
+
               var currentFinalPos = determineFinalPos();
               gridCtrl.highlightArea(currentFinalPos);
-              
+
               containerElement.css({
                 top: delta.top + 'px',
                 left: delta.left + 'px',
@@ -741,26 +750,26 @@
                 right: delta.right + 'px'
               });
             }
-            
+
             function onUp(event) {
               event.preventDefault();
               $document.off(eventMove, onMove);
               $document.off(eventUp, onUp);
-              
+
 
               var finalPos = determineFinalPos();
               scope.setWidgetPosition(finalPos);
               gridCtrl.resetHighlights();
-              
+
               // reset style
               widgetElement.removeClass('wg-resizing');
               dragger.element.removeClass('dragging');
               containerElement.removeAttr('style');
             }
-            
+
             function determineFinalPos() {
               var finalPos = {};
-              
+
               var requestedStartPoint = gridCtrl.rasterizeCoords(startRender.left + delta.left + 1, startRender.top + delta.top + 1),
                   requestedEndPoint = gridCtrl.rasterizeCoords(startRender.right - delta.right - 1, startRender.bottom - delta.bottom - 1);
 
@@ -770,12 +779,12 @@
                 bottom: requestedEndPoint.top,
                 left: requestedStartPoint.left
               };
-              
+
               // determine a suitable final position (one that is not obstructed)
               var foundCollision, i, j;
               if (dragger.up && requestedPos.top < startPos.top) {
                 finalPos.top = startPos.top;
-                
+
                 while (finalPos.top > requestedPos.top) {
                   // check whether adding another row would cause any conflict
                   foundCollision = false;
@@ -786,12 +795,12 @@
                     }
                   }
                   if (foundCollision) { break; }
-                  
+
                   finalPos.top--; // add row
                 }
               } else if (dragger.down && requestedPos.bottom > startPos.bottom) {
                 finalPos.bottom = startPos.bottom;
-                
+
                 while (finalPos.bottom < requestedPos.bottom) {
                   foundCollision = false;
                   for (j = Math.max(startPos.left, requestedPos.left); j <= Math.min(startPos.right, requestedPos.right); j++) {
@@ -801,17 +810,17 @@
                     }
                   }
                   if (foundCollision) { break; }
-                  
+
                   finalPos.bottom++;
                 }
               }
-              
+
               finalPos.top = finalPos.top || requestedPos.top;
               finalPos.bottom = finalPos.bottom || requestedPos.bottom;
-              
+
               if (dragger.left && requestedPos.left < startPos.left) {
                 finalPos.left = startPos.left;
-                
+
                 while (finalPos.left > requestedPos.left) {
                   // check whether adding another column would cause any conflict
                   foundCollision = false;
@@ -822,12 +831,12 @@
                     }
                   }
                   if (foundCollision) { break; }
-                  
+
                   finalPos.left--; // add column
                 }
               } else if (dragger.right && requestedPos.right > startPos.right) {
                 finalPos.right = startPos.right;
-                
+
                 while (finalPos.right < requestedPos.right) {
                   foundCollision = false;
                   for (i = finalPos.top; i <= finalPos.bottom; i++) {
@@ -837,7 +846,7 @@
                     }
                   }
                   if (foundCollision) { break; }
-                  
+
                   finalPos.right++;
                 }
               }
@@ -846,7 +855,7 @@
               finalPos.left = finalPos.left || requestedPos.left;
               finalPos.height = finalPos.bottom - finalPos.top + 1;
               finalPos.width = finalPos.right - finalPos.left + 1;
-              
+
               return finalPos;
             }
           }
@@ -1223,11 +1232,11 @@
   /**
    * @ngdoc object
    * @name widgetGrid.GridRendering
-   * 
+   *
    * @description
    * A rendering of a grid, assigning positions to each of its widgets,
    * keeping track of obstructions, and providing utility functions.
-   * 
+   *
    * @requires widgetGrid.GridArea
    * @requires widgetGrid.GridPoint
    */
@@ -1236,10 +1245,10 @@
      * @ngdoc method
      * @name GridRendering
      * @methodOf widgetGrid.GridRendering
-     * 
+     *
      * @description
      * Constructor.
-     * 
+     *
      * @param {Grid} grid Rendered grid
      */
     var GridRendering = function GridRendering(grid) {
@@ -1257,10 +1266,10 @@
      * @ngdoc method
      * @name rasterizeCoords
      * @methodOf widgetGrid.GridRendering
-     * 
+     *
      * @description
      * Returns grid coordinates for a set of pixel coordinates.
-     * 
+     *
      * @param {number} top Top position (px)
      * @param {number} left Left position (px)
      * @param {number} gridWidth Width of the grid container (px)
@@ -1281,10 +1290,10 @@
      * @ngdoc method
      * @name getWidgetIdAt
      * @methodOf widgetGrid.GridRendering
-     * 
+     *
      * @description
      * Gets the id of the widget at a given grid position, if any.
-     * 
+     *
      * @param {number} i Top position
      * @param {number} j Left position
      */
@@ -1305,10 +1314,10 @@
      * @ngdoc method
      * @name getWidgetPosition
      * @methodOf widgetGrid.GridRendering
-     * 
+     *
      * @description
      * Gets the rendered position of a given widget.
-     * 
+     *
      * @param {string} widgetId Id of the widget
      * @return {GridArea} Rendered position
      */
@@ -1321,10 +1330,10 @@
      * @ngdoc method
      * @name setWidgetPosition
      * @methodOf widgetGrid.GridRendering
-     * 
+     *
      * @description
      * Sets the rendered position for a given widget.
-     * 
+     *
      * @param {string} widgetId Id of the widget
      * @param {GridArea} newPosition Rendered position
      */
@@ -1351,10 +1360,10 @@
      * @ngdoc method
      * @name hasSpaceLeft
      * @methodOf widgetGrid.GridRendering
-     * 
+     *
      * @description
      * Whether any cell in the grid is unoccupied.
-     * 
+     *
      * @return {boolean} Has space left
      */
     GridRendering.prototype.hasSpaceLeft = function () {
@@ -1371,16 +1380,16 @@
      * @ngdoc method
      * @name getNextPosition
      * @methodOf widgetGrid.GridRendering
-     * 
+     *
      * @description
      * Gets the next best unoccupied area in the current rendering, if any.
      * Can e.g. be used to determine positions for newly added widgets.
-     * 
+     *
      * @return {GridPosition} Next position, or null
      */
     GridRendering.prototype.getNextPosition = function () {
       if (angular.isDefined(this.cachedNextPosition)) {
-        return this.cachedNextPosition; 
+        return this.cachedNextPosition;
       }
 
       if (!this.hasSpaceLeft()) {
@@ -1395,13 +1404,34 @@
 
     /**
      * @ngdoc method
+     * @name getNextPositionForSize
+     * @methodOf widgetGrid.GridRendering
+     *
+     * @description
+     * Gets the next best unoccupied area of a given size in the current rendering, if any.
+     * Can e.g. be used to determine positions for newly added widgets.
+     *
+     * @return {GridPosition} Next position, or null
+     */
+    GridRendering.prototype.getNextPositionForSize = function (height, width) {
+      if (!this.hasSpaceLeft()) {
+        return null;
+      }
+
+      var position = this.findAreaToFitSize(height, width);
+      return position;
+    };
+
+
+    /**
+     * @ngdoc method
      * @name isObstructed
      * @methodOf widgetGrid.GridRendering
-     * 
+     *
      * @description
      * Checks whether a given point in the grid is obstructed by a widget,
      * considering the current grid's bounds, as well as an optional excluded area.
-     * 
+     *
      * @param {number} i Top position
      * @param {number} j Left position
      * @param {GridArea} excludedArea Area to ignore (optional)
@@ -1430,10 +1460,10 @@
      * @ngdoc method
      * @name _isObstructed
      * @methodOf widgetGrid.GridRendering
-     * 
+     *
      * @description
      * Checks whether a given point in the grid is obstructed by a widget.
-     * 
+     *
      * @param {number} i Top position
      * @param {number} j Left position
      * @return {boolean} Whether it is obstructed
@@ -1447,10 +1477,10 @@
      * @ngdoc method
      * @name isAreaObstructed
      * @methodOf widgetGrid.GridRendering
-     * 
+     *
      * @description
      * Checks whether a given area in the grid is obstructed by a widget.
-     * 
+     *
      * @param {GridArea} area Area
      * @param {Map<string, any>} options Options: `fromBottom` (start search from bottom), `fromRight` (.. from right), `excludedArea` (area to ignore).
      * @return {boolean} Whether it is obstructed
@@ -1463,7 +1493,7 @@
           left = area.left,
           bottom = area.bottom || area.top + area.height - 1,
           right = area.right || area.left + area.width - 1;
-      
+
       if (!angular.isNumber(top) || !angular.isNumber(left) ||
           !angular.isNumber(bottom) || !angular.isNumber(right)) {
         return false;
@@ -1491,10 +1521,10 @@
      * @ngdoc method
      * @name getStyle
      * @methodOf widgetGrid.GridRendering
-     * 
+     *
      * @description
      * Gets the CSS rules for a given widget.
-     * 
+     *
      * @param {string} widgetId Id of the widget
      * @return {Map<string, string>} CSS rules
      */
@@ -1519,10 +1549,10 @@
      * @ngdoc method
      * @name setObstructionValues
      * @methodOf widgetGrid.GridRendering
-     * 
+     *
      * @description
-     * Sets the obstruction state of an area to a given value. 
-     * 
+     * Sets the obstruction state of an area to a given value.
+     *
      * @param {GridArea} area Affected area
      * @param {number} value New obstruction value
      */
@@ -1539,7 +1569,7 @@
      * @ngdoc method
      * @name printObstructions
      * @methodOf widgetGrid.GridRendering
-     * 
+     *
      * @description
      * Prints the current obstruction state of a rendering to the console.
      */
@@ -1560,10 +1590,10 @@
      * @ngdoc method
      * @name findLargestEmptyArea
      * @methodOf widgetGrid.GridRendering
-     * 
+     *
      * @description
      * Finds the largest non-obstructed area in a given rendering, if any.
-     * 
+     *
      * @return {GridArea} Largest empty area, or null
      */
     GridRendering.prototype.findLargestEmptyArea = function () {
@@ -1595,7 +1625,7 @@
 
     /**
      * Finds the largest empty area that starts at a given position.
-     * 
+     *
      * @param {GridPoint} start Start position
      * @return {GridArea} Largest empty area, or null
      */
@@ -1622,6 +1652,82 @@
           if (currSurfaceArea > maxSurfaceArea) {
             maxSurfaceArea = currSurfaceArea;
             maxArea = new GridArea(start.top, start.left, currHeight, currWidth);
+          }
+        }
+      }
+      return maxArea;
+    }
+
+    /**
+     * @ngdoc method
+     * @name findAreaToFitSize
+     * @methodOf widgetGrid.GridRendering
+     *
+     * @description
+     * Finds a non-obstructed area for a given size in a given rendering, if any.
+     *
+     * @return {GridArea} Largest empty area, or null
+     */
+    GridRendering.prototype.findAreaToFitSize = function (height, width) {
+      var maxArea = null, currMaxArea = null,
+          maxSurfaceArea = 0, currMaxSurfaceArea = 0;
+      for (var i = 1; i <= this.grid.rows; i++) {
+        for (var j = 1; j <= this.grid.columns; j++) {
+          if (this._isObstructed(i, j)) {
+            continue;
+          }
+
+          var currAreaLimit = (this.grid.rows - i + 1) * (this.grid.columns - j + 1);
+          if (currAreaLimit < maxSurfaceArea) {
+            break;
+          }
+
+          currMaxArea = _findAreaToFitSizeFrom(new GridPoint(i, j), this, height, width);
+          if (currMaxArea !== null) {
+            currMaxSurfaceArea = currMaxArea.getSurfaceArea();
+
+            if (currMaxSurfaceArea > maxSurfaceArea) {
+              maxSurfaceArea = currMaxSurfaceArea;
+              maxArea = currMaxArea;
+            }
+          }
+        }
+      }
+      return maxArea;
+    };
+
+
+    /**
+     * Finds an empty area of the given size that starts at a given position.
+     *
+     * @param {GridPoint} start Start position
+     * @return {GridArea} Largest empty area, or null
+     */
+    function _findAreaToFitSizeFrom(start, rendering, height, width) {
+      if (!angular.isDefined(rendering) || !angular.isDefined(rendering.grid) ||
+          !angular.isNumber(rendering.grid.columns) || !angular.isNumber(rendering.grid.rows)) {
+        return null;
+      }
+
+      var maxArea = null,
+          maxSurfaceArea = 0,
+          endColumn = rendering.grid.columns;
+      for (var i = start.top; i <= rendering.grid.rows; i++) {
+        for (var j = start.left; j <= endColumn; j++) {
+          if (rendering._isObstructed(i, j)) {
+            endColumn = j - 1;
+            continue;
+          }
+
+          var currHeight = (i - start.top + 1),
+              currWidth = (j - start.left + 1),
+              currSurfaceArea = currHeight * currWidth;
+
+          if (currSurfaceArea > maxSurfaceArea) {
+            if (currHeight >= height && currWidth >= width) {
+              maxSurfaceArea = currSurfaceArea;
+              maxArea = new GridArea(start.top, start.left, currHeight, currWidth);
+            }
           }
         }
       }
@@ -1832,16 +1938,37 @@
       });
 
       angular.forEach(unpositionedWidgets, function (widget) {
-        var nextPosition = rendering.getNextPosition();
-        if (nextPosition !== null) {
-          widget.setPosition(nextPosition);
-          rendering.setWidgetPosition(widget.id, nextPosition);
+        var nextPosition = null;
+
+        if (widget.height && widget.height !== 0 &&
+            widget.width && widget.width !== 0) {
+          nextPosition = rendering.getNextPositionForSize(widget.height, widget.width);
+
+          if (nextPosition !== null) {
+            nextPosition.height = widget.height;
+            nextPosition.width = widget.width;
+
+            widget.setPosition(nextPosition);
+            rendering.setWidgetPosition(widget.id, nextPosition);
+
+            if (emitWidgetPositionUpdated !== undefined) {
+              emitWidgetPositionUpdated(widget);
+            }
+          } else if (emitWidgetPositionUpdated !== undefined) {
+            emitWidgetPositionUpdated(widget, true);
+          }
         } else {
-          widget.setPosition(GridArea.empty);
-          rendering.setWidgetPosition(widget.id, GridArea.empty);
-        }
-        if (emitWidgetPositionUpdated !== undefined) {
-          emitWidgetPositionUpdated(widget);
+          nextPosition = rendering.getNextPosition();
+          if (nextPosition !== null) {
+            widget.setPosition(nextPosition);
+            rendering.setWidgetPosition(widget.id, nextPosition);
+          } else {
+            widget.setPosition(GridArea.empty);
+            rendering.setWidgetPosition(widget.id, GridArea.empty);
+          }
+          if (emitWidgetPositionUpdated !== undefined) {
+            emitWidgetPositionUpdated(widget);
+          }
         }
       });
 
@@ -1933,7 +2060,7 @@ angular.module('widgetGrid').run(['$templateCache', function($templateCache) {
   'use strict';
 
   $templateCache.put('wg-grid',
-    "<div class=wg-grid><div class=wg-grid-widgets ng-transclude></div><div wg-grid-overlay options=gridCtrl.overlayOptions rendering=gridCtrl.rendering highlight=\"gridCtrl.highlight\"></div>"
+    "<div class=wg-grid><div class=wg-grid-widgets ng-transclude></div><div wg-grid-overlay options=gridCtrl.overlayOptions rendering=gridCtrl.rendering highlight=gridCtrl.highlight></div>"
   );
 
 

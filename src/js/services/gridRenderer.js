@@ -42,16 +42,37 @@
       });
 
       angular.forEach(unpositionedWidgets, function (widget) {
-        var nextPosition = rendering.getNextPosition();
-        if (nextPosition !== null) {
-          widget.setPosition(nextPosition);
-          rendering.setWidgetPosition(widget.id, nextPosition);
+        var nextPosition = null;
+
+        if (widget.height && widget.height !== 0 &&
+            widget.width && widget.width !== 0) {
+          nextPosition = rendering.getNextPositionForSize(widget.height, widget.width);
+
+          if (nextPosition !== null) {
+            nextPosition.height = widget.height;
+            nextPosition.width = widget.width;
+
+            widget.setPosition(nextPosition);
+            rendering.setWidgetPosition(widget.id, nextPosition);
+
+            if (emitWidgetPositionUpdated !== undefined) {
+              emitWidgetPositionUpdated(widget);
+            }
+          } else if (emitWidgetPositionUpdated !== undefined) {
+            emitWidgetPositionUpdated(widget, true);
+          }
         } else {
-          widget.setPosition(GridArea.empty);
-          rendering.setWidgetPosition(widget.id, GridArea.empty);
-        }
-        if (emitWidgetPositionUpdated !== undefined) {
-          emitWidgetPositionUpdated(widget);
+          nextPosition = rendering.getNextPosition();
+          if (nextPosition !== null) {
+            widget.setPosition(nextPosition);
+            rendering.setWidgetPosition(widget.id, nextPosition);
+          } else {
+            widget.setPosition(GridArea.empty);
+            rendering.setWidgetPosition(widget.id, GridArea.empty);
+          }
+          if (emitWidgetPositionUpdated !== undefined) {
+            emitWidgetPositionUpdated(widget);
+          }
         }
       });
 
