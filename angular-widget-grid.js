@@ -1,5 +1,5 @@
 /**
- * @license angular-widget-grid v0.3.0
+ * @license angular-widget-grid v0.4.0-alpha.2
  * (c) 2016 Patrick Buergin
  * License: MIT
  * https://github.com/patbuergin/angular-widget-grid
