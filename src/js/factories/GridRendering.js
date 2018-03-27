@@ -174,6 +174,27 @@
 
     /**
      * @ngdoc method
+     * @name getNextPositionForSize
+     * @methodOf widgetGrid.GridRendering
+     *
+     * @description
+     * Gets the next best unoccupied area of a given size in the current rendering, if any.
+     * Can be used to determine positions for newly added widgets.
+     *
+     * @return {GridPosition} Next position, or null
+     */
+    GridRendering.prototype.getNextPositionForSize = function (height, width) {
+      if (!this.hasSpaceLeft()) {
+        return null;
+      }
+
+      var position = this.findAreaToFitSize(height, width);
+      return position;
+    };
+    
+    
+    /**
+     * @ngdoc method
      * @name isObstructed
      * @methodOf widgetGrid.GridRendering
      * 
@@ -401,6 +422,83 @@
           if (currSurfaceArea > maxSurfaceArea) {
             maxSurfaceArea = currSurfaceArea;
             maxArea = new GridArea(start.top, start.left, currHeight, currWidth);
+          }
+        }
+      }
+      return maxArea;
+    }
+    
+    
+    /**
+     * @ngdoc method
+     * @name findAreaToFitSize
+     * @methodOf widgetGrid.GridRendering
+     *
+     * @description
+     * Finds a non-obstructed area for a given size in a given rendering, if any.
+     *
+     * @return {GridArea} Largest empty area, or null
+     */
+    GridRendering.prototype.findAreaToFitSize = function (height, width) {
+      var maxArea = null, currMaxArea = null,
+          maxSurfaceArea = 0, currMaxSurfaceArea = 0;
+      for (var i = 1; i <= this.grid.rows; i++) {
+        for (var j = 1; j <= this.grid.columns; j++) {
+          if (this._isObstructed(i, j)) {
+            continue;
+          }
+
+          var currAreaLimit = (this.grid.rows - i + 1) * (this.grid.columns - j + 1);
+          if (currAreaLimit < maxSurfaceArea) {
+            break;
+          }
+
+          currMaxArea = _findAreaToFitSizeFrom(new GridPoint(i, j), this, height, width);
+          if (currMaxArea !== null) {
+            currMaxSurfaceArea = currMaxArea.getSurfaceArea();
+
+            if (currMaxSurfaceArea > maxSurfaceArea) {
+              maxSurfaceArea = currMaxSurfaceArea;
+              maxArea = currMaxArea;
+            }
+          }
+        }
+      }
+      return maxArea;
+    };
+
+
+    /**
+     * Finds an empty area of the given size that starts at a given position.
+     *
+     * @param {GridPoint} start Start position
+     * @return {GridArea} Largest empty area, or null
+     */
+    function _findAreaToFitSizeFrom(start, rendering, height, width) {
+      if (!angular.isDefined(rendering) || !angular.isDefined(rendering.grid) ||
+          !angular.isNumber(rendering.grid.columns) || !angular.isNumber(rendering.grid.rows)) {
+        return null;
+      }
+
+      var maxArea = null,
+          maxSurfaceArea = 0,
+          endColumn = rendering.grid.columns;
+      for (var i = start.top; i <= rendering.grid.rows; i++) {
+        for (var j = start.left; j <= endColumn; j++) {
+          if (rendering._isObstructed(i, j)) {
+            endColumn = j - 1;
+            continue;
+          }
+
+          var currHeight = (i - start.top + 1),
+              currWidth = (j - start.left + 1),
+              currSurfaceArea = currHeight * currWidth;
+
+          if (currSurfaceArea > maxSurfaceArea) {
+            if (currHeight >= height && currWidth >= width) {
+              maxSurfaceArea = currSurfaceArea;
+              maxArea = new GridArea(start.top, start.left, currHeight, currWidth);
+            }
           }
         }
       }
