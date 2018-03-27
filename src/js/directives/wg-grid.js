@@ -93,13 +93,10 @@
     }
 
 
-    function emitUpdatePosition(widget, failedToFindPosition) {
-      var success = !failedToFindPosition;
-      
+    function emitUpdatePosition(widget) {
       $scope.$emit('wg-update-position', {
         index: getWidgetIndex(widget),
-        newPosition: widget.getPosition(),
-        Success: success
+        newPosition: widget.getPosition()
       });
     }
 
