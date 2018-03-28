@@ -82,7 +82,7 @@
           var i, x, y, gridLine;
           for (i = 1; i < rendering.grid.rows; i += 2) {
               y = (i * cellHeight) + '%';
-              gridLine = '<div class="wg-preview-item wg-preview-row" style="top: ' + y + '; height: calc(' + height + ' - 1px);"></div>';
+              gridLine = '<div class="wg-preview-item wg-preview-row" style="top: ' + y + '; height: calc(' + height + ' + 1px);"></div>';
               gridLine = angular.element(gridLine);
               element.append(gridLine);
               activeGridLines.push(gridLine);
@@ -90,7 +90,7 @@
 
           for (i = 1; i < rendering.grid.columns; i += 2) {
               x = (i * cellWidth) + '%';
-              gridLine = '<div class="wg-preview-item wg-preview-column" style="left: ' + x + '; width: calc(' + width + ' - 1px);"></div>';
+              gridLine = '<div class="wg-preview-item wg-preview-column" style="left: ' + x + '; width: calc(' + width + ' + 1px);"></div>';
               gridLine = angular.element(gridLine);
               element.append(gridLine);
               activeGridLines.push(gridLine);
@@ -227,10 +227,11 @@
     }
 
 
-    function emitUpdatePosition(widget) {
+    function emitUpdatePosition(widget, message) {
       $scope.$emit('wg-update-position', {
         index: getWidgetIndex(widget),
-        newPosition: widget.getPosition()
+        newPosition: widget.getPosition(),
+        message: message
       });
     }
 
@@ -1930,21 +1931,28 @@
       });
 
       angular.forEach(unpositionedWidgets, function (widget) {
+        var message = '';
+        
         if (widget.height && widget.height !== 0 &&
             widget.width && widget.width !== 0) {
           var nextPosition = rendering.getNextPositionForSize(widget.height, widget.width);
           
           if (nextPosition !== null) {
-            renderWithFixedSize(widget, emitWidgetPositionUpdated);
+            renderWithFixedSize(widget);
           } else {
-            renderWithVariableSize(widget, emitWidgetPositionUpdated);
+            renderWithVariableSize(widget);
+            message = 'Widget will not fit at default size.';
           }
         } else {
-          renderWithVariableSize(widget, emitWidgetPositionUpdated);
+          renderWithVariableSize(widget);
+        }
+        
+        if (emitWidgetPositionUpdated !== undefined) {
+          emitWidgetPositionUpdated(widget, message);
         }
       });
       
-      function renderWithFixedSize(widget, emitWidgetPositionUpdated) {
+      function renderWithFixedSize(widget) {
         var nextPosition = rendering.getNextPositionForSize(widget.height, widget.width);
 
         if (nextPosition !== null) {
@@ -1957,12 +1965,9 @@
           widget.setPosition(GridArea.empty);
           rendering.setWidgetPosition(widget.id, GridArea.empty);
         }
-        if (emitWidgetPositionUpdated !== undefined) {
-          emitWidgetPositionUpdated(widget);
-        }
       }
       
-      function renderWithVariableSize(widget, emitWidgetPositionUpdated) {
+      function renderWithVariableSize(widget) {
         var nextPosition = rendering.getNextPosition();
                   
         if (nextPosition !== null) {
@@ -1971,9 +1976,6 @@
         } else {
           widget.setPosition(GridArea.empty);
           rendering.setWidgetPosition(widget.id, GridArea.empty);
-        }
-        if (emitWidgetPositionUpdated !== undefined) {
-          emitWidgetPositionUpdated(widget);
         }
       }
 
