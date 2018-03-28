@@ -35,9 +35,9 @@
           eventMove = 'mousemove touchmove';
           eventUp = 'mouseup touchend touchcancel';
         }
-
+        
         element.on(eventDown, onDown);
-
+        
         function onDown(event) {
           event.preventDefault();
           if (angular.isObject(event.originalEvent)) {
@@ -91,8 +91,8 @@
             }
 
             // normalize the drag position
-            var dragPositionX = Math.round(event.pageX) - gridPositions.left,
-                dragPositionY = Math.round(event.pageY) - gridPositions.top;
+            var dragPositionX = Math.round(event.clientX) - gridPositions.left,
+                dragPositionY = Math.round(event.clientY) - gridPositions.top;
 
             desiredPosition.top = Math.min(Math.max(dragPositionY - moverOffset.top, 0), gridPositions.height - startRender.height - 1);
             desiredPosition.left = Math.min(Math.max(dragPositionX - moverOffset.left, 0), gridPositions.width - startRender.width - 1);
@@ -158,7 +158,7 @@
 
           while (path.hasNext()) {
             var currPos = path.next();
-
+            
             var targetArea = {
               top: currPos.top,
               left: currPos.left,
