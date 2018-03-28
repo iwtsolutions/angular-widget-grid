@@ -72,7 +72,7 @@
           var i, x, y, gridLine;
           for (i = 1; i < rendering.grid.rows; i += 2) {
               y = (i * cellHeight) + '%';
-              gridLine = '<div class="wg-preview-item wg-preview-row" style="top: ' + y + '; height: calc(' + height + ' - 1px);"></div>';
+              gridLine = '<div class="wg-preview-item wg-preview-row" style="top: ' + y + '; height: calc(' + height + ' + 1px);"></div>';
               gridLine = angular.element(gridLine);
               element.append(gridLine);
               activeGridLines.push(gridLine);
@@ -80,7 +80,7 @@
 
           for (i = 1; i < rendering.grid.columns; i += 2) {
               x = (i * cellWidth) + '%';
-              gridLine = '<div class="wg-preview-item wg-preview-column" style="left: ' + x + '; width: calc(' + width + ' - 1px);"></div>';
+              gridLine = '<div class="wg-preview-item wg-preview-column" style="left: ' + x + '; width: calc(' + width + ' + 1px);"></div>';
               gridLine = angular.element(gridLine);
               element.append(gridLine);
               activeGridLines.push(gridLine);
