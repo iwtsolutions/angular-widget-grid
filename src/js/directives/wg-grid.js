@@ -93,10 +93,11 @@
     }
 
 
-    function emitUpdatePosition(widget) {
+    function emitUpdatePosition(widget, message) {
       $scope.$emit('wg-update-position', {
         index: getWidgetIndex(widget),
-        newPosition: widget.getPosition()
+        newPosition: widget.getPosition(),
+        message: message
       });
     }
 

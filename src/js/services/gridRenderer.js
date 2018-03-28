@@ -42,21 +42,28 @@
       });
 
       angular.forEach(unpositionedWidgets, function (widget) {
+        var message = '';
+        
         if (widget.height && widget.height !== 0 &&
             widget.width && widget.width !== 0) {
           var nextPosition = rendering.getNextPositionForSize(widget.height, widget.width);
           
           if (nextPosition !== null) {
-            renderWithFixedSize(widget, emitWidgetPositionUpdated);
+            renderWithFixedSize(widget);
           } else {
-            renderWithVariableSize(widget, emitWidgetPositionUpdated);
+            renderWithVariableSize(widget);
+            message = 'Widget will not fit at default size.';
           }
         } else {
-          renderWithVariableSize(widget, emitWidgetPositionUpdated);
+          renderWithVariableSize(widget);
+        }
+        
+        if (emitWidgetPositionUpdated !== undefined) {
+          emitWidgetPositionUpdated(widget, message);
         }
       });
       
-      function renderWithFixedSize(widget, emitWidgetPositionUpdated) {
+      function renderWithFixedSize(widget) {
         var nextPosition = rendering.getNextPositionForSize(widget.height, widget.width);
 
         if (nextPosition !== null) {
@@ -69,12 +76,9 @@
           widget.setPosition(GridArea.empty);
           rendering.setWidgetPosition(widget.id, GridArea.empty);
         }
-        if (emitWidgetPositionUpdated !== undefined) {
-          emitWidgetPositionUpdated(widget);
-        }
       }
       
-      function renderWithVariableSize(widget, emitWidgetPositionUpdated) {
+      function renderWithVariableSize(widget) {
         var nextPosition = rendering.getNextPosition();
                   
         if (nextPosition !== null) {
@@ -83,9 +87,6 @@
         } else {
           widget.setPosition(GridArea.empty);
           rendering.setWidgetPosition(widget.id, GridArea.empty);
-        }
-        if (emitWidgetPositionUpdated !== undefined) {
-          emitWidgetPositionUpdated(widget);
         }
       }
 
