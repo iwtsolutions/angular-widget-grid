@@ -1941,7 +1941,7 @@
             renderWithFixedSize(widget);
           } else {
             renderWithVariableSize(widget);
-            message = 'Widget will not fit at default size.';
+            message = 'Widget will not fit at default size. Adjusted size to fit available space.';
           }
         } else {
           renderWithVariableSize(widget);
