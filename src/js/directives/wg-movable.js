@@ -91,8 +91,8 @@
             }
 
             // normalize the drag position
-            var dragPositionX = Math.round(event.clientX) - gridPositions.left,
-                dragPositionY = Math.round(event.clientY) - gridPositions.top;
+            var dragPositionX = Math.round(event.pageX) - gridPositions.left,
+                dragPositionY = Math.round(event.pageY) - gridPositions.top;
 
             desiredPosition.top = Math.min(Math.max(dragPositionY - moverOffset.top, 0), gridPositions.height - startRender.height - 1);
             desiredPosition.left = Math.min(Math.max(dragPositionX - moverOffset.left, 0), gridPositions.width - startRender.width - 1);

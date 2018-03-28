@@ -69,22 +69,41 @@
               height = cellHeight + '%',
               width = cellWidth + '%';
 
-          var i, x, y, gridLine;
+          // Note: Only supports even numbers for now...
+          var middleRow = isEven(rendering.grid.rows) ? rendering.grid.rows / 2 : 0;
+          var middleColumn = isEven(rendering.grid.columns) ? rendering.grid.columns / 2 : 0;
+              
+          var i, x, y, gridLine, classes;
           for (i = 1; i < rendering.grid.rows; i += 2) {
+              classes = 'wg-preview-item wg-preview-row';
+              if (i === middleRow || i + 1 === middleRow) {
+                classes += ' wg-preview-middle-row';
+              }
+              
               y = (i * cellHeight) + '%';
-              gridLine = '<div class="wg-preview-item wg-preview-row" style="top: ' + y + '; height: calc(' + height + ' - 1px);"></div>';
+              gridLine = '<div class="' + classes + '" style="top: ' + y + '; height: calc(' + height + ' + 1px);"></div>';
               gridLine = angular.element(gridLine);
               element.append(gridLine);
               activeGridLines.push(gridLine);
           }
 
           for (i = 1; i < rendering.grid.columns; i += 2) {
+              classes = 'wg-preview-item wg-preview-column';
+              if (i === middleColumn || i + 1 === middleColumn) {
+                classes += ' wg-preview-middle-column';
+              }
+              
               x = (i * cellWidth) + '%';
-              gridLine = '<div class="wg-preview-item wg-preview-column" style="left: ' + x + '; width: calc(' + width + ' - 1px);"></div>';
+              gridLine = '<div class="' + classes + '" style="left: ' + x + '; width: calc(' + width + ' + 1px);"></div>';
               gridLine = angular.element(gridLine);
               element.append(gridLine);
               activeGridLines.push(gridLine);
           }
+        }
+        
+        
+        function isEven(n) {
+          return n % 2 === 0;
         }
 
 

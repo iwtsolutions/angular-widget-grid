@@ -42,7 +42,45 @@
       });
 
       angular.forEach(unpositionedWidgets, function (widget) {
+        var message = '';
+        
+        if (widget.height && widget.height !== 0 &&
+            widget.width && widget.width !== 0) {
+          var nextPosition = rendering.getNextPositionForSize(widget.height, widget.width);
+          
+          if (nextPosition !== null) {
+            renderWithFixedSize(widget);
+          } else {
+            renderWithVariableSize(widget);
+            message = 'Widget will not fit at default size. Adjusted size to fit available space.';
+          }
+        } else {
+          renderWithVariableSize(widget);
+        }
+        
+        if (emitWidgetPositionUpdated !== undefined) {
+          emitWidgetPositionUpdated(widget, message);
+        }
+      });
+      
+      function renderWithFixedSize(widget) {
+        var nextPosition = rendering.getNextPositionForSize(widget.height, widget.width);
+
+        if (nextPosition !== null) {
+          nextPosition.height = widget.height;
+          nextPosition.width = widget.width;
+
+          widget.setPosition(nextPosition);
+          rendering.setWidgetPosition(widget.id, nextPosition);
+        } else {
+          widget.setPosition(GridArea.empty);
+          rendering.setWidgetPosition(widget.id, GridArea.empty);
+        }
+      }
+      
+      function renderWithVariableSize(widget) {
         var nextPosition = rendering.getNextPosition();
+                  
         if (nextPosition !== null) {
           widget.setPosition(nextPosition);
           rendering.setWidgetPosition(widget.id, nextPosition);
@@ -50,10 +88,7 @@
           widget.setPosition(GridArea.empty);
           rendering.setWidgetPosition(widget.id, GridArea.empty);
         }
-        if (emitWidgetPositionUpdated !== undefined) {
-          emitWidgetPositionUpdated(widget);
-        }
-      });
+      }
 
       return rendering;
     }

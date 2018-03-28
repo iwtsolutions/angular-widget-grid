@@ -134,9 +134,9 @@
               }
               
               // normalize the drag position
-              var dragPositionX = Math.round(event.clientX) - gridPositions.left,
-                  dragPositionY = Math.round(event.clientY) - gridPositions.top;
-              
+              var dragPositionX = Math.round(event.pageX) - gridPositions.left,
+                  dragPositionY = Math.round(event.pageY) - gridPositions.top;
+
               if (dragger.up) {
                 delta.top = Math.min(Math.max(dragPositionY - draggerOffset.top, 0), gridPositions.height) - startRender.top;
                 delta.top = Math.min(delta.top, startRender.height - MIN_HEIGHT);

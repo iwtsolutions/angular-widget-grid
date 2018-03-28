@@ -1,6 +1,6 @@
 /**
- * @license angular-widget-grid v0.2.5
- * (c) 2016 Patrick Buergin
+ * @license angular-widget-grid v0.4.0
+ * (c) 2018 Patrick Buergin
  * License: MIT
  * https://github.com/patbuergin/angular-widget-grid
  */
@@ -79,22 +79,41 @@
               height = cellHeight + '%',
               width = cellWidth + '%';
 
-          var i, x, y, gridLine;
+          // Note: Only supports even numbers for now...
+          var middleRow = isEven(rendering.grid.rows) ? rendering.grid.rows / 2 : 0;
+          var middleColumn = isEven(rendering.grid.columns) ? rendering.grid.columns / 2 : 0;
+              
+          var i, x, y, gridLine, classes;
           for (i = 1; i < rendering.grid.rows; i += 2) {
+              classes = 'wg-preview-item wg-preview-row';
+              if (i === middleRow || i + 1 === middleRow) {
+                classes += ' wg-preview-middle-row';
+              }
+              
               y = (i * cellHeight) + '%';
-              gridLine = '<div class="wg-preview-item wg-preview-row" style="top: ' + y + '; height: calc(' + height + ' - 1px);"></div>';
+              gridLine = '<div class="' + classes + '" style="top: ' + y + '; height: calc(' + height + ' + 1px);"></div>';
               gridLine = angular.element(gridLine);
               element.append(gridLine);
               activeGridLines.push(gridLine);
           }
 
           for (i = 1; i < rendering.grid.columns; i += 2) {
+              classes = 'wg-preview-item wg-preview-column';
+              if (i === middleColumn || i + 1 === middleColumn) {
+                classes += ' wg-preview-middle-column';
+              }
+              
               x = (i * cellWidth) + '%';
-              gridLine = '<div class="wg-preview-item wg-preview-column" style="left: ' + x + '; width: calc(' + width + ' - 1px);"></div>';
+              gridLine = '<div class="' + classes + '" style="left: ' + x + '; width: calc(' + width + ' + 1px);"></div>';
               gridLine = angular.element(gridLine);
               element.append(gridLine);
               activeGridLines.push(gridLine);
           }
+        }
+        
+        
+        function isEven(n) {
+          return n % 2 === 0;
         }
 
 
@@ -227,10 +246,11 @@
     }
 
 
-    function emitUpdatePosition(widget) {
+    function emitUpdatePosition(widget, message) {
       $scope.$emit('wg-update-position', {
         index: getWidgetIndex(widget),
-        newPosition: widget.getPosition()
+        newPosition: widget.getPosition(),
+        message: message
       });
     }
 
@@ -450,8 +470,8 @@
             }
 
             // normalize the drag position
-            var dragPositionX = Math.round(event.clientX) - gridPositions.left,
-                dragPositionY = Math.round(event.clientY) - gridPositions.top;
+            var dragPositionX = Math.round(event.pageX) - gridPositions.left,
+                dragPositionY = Math.round(event.pageY) - gridPositions.top;
 
             desiredPosition.top = Math.min(Math.max(dragPositionY - moverOffset.top, 0), gridPositions.height - startRender.height - 1);
             desiredPosition.left = Math.min(Math.max(dragPositionX - moverOffset.left, 0), gridPositions.width - startRender.width - 1);
@@ -712,9 +732,9 @@
               }
               
               // normalize the drag position
-              var dragPositionX = Math.round(event.clientX) - gridPositions.left,
-                  dragPositionY = Math.round(event.clientY) - gridPositions.top;
-              
+              var dragPositionX = Math.round(event.pageX) - gridPositions.left,
+                  dragPositionY = Math.round(event.pageY) - gridPositions.top;
+
               if (dragger.up) {
                 delta.top = Math.min(Math.max(dragPositionY - draggerOffset.top, 0), gridPositions.height) - startRender.top;
                 delta.top = Math.min(delta.top, startRender.height - MIN_HEIGHT);
@@ -1395,6 +1415,27 @@
 
     /**
      * @ngdoc method
+     * @name getNextPositionForSize
+     * @methodOf widgetGrid.GridRendering
+     *
+     * @description
+     * Gets the next best unoccupied area of a given size in the current rendering, if any.
+     * Can be used to determine positions for newly added widgets.
+     *
+     * @return {GridPosition} Next position, or null
+     */
+    GridRendering.prototype.getNextPositionForSize = function (height, width) {
+      if (!this.hasSpaceLeft()) {
+        return null;
+      }
+
+      var position = this.findAreaToFitSize(height, width);
+      return position;
+    };
+    
+    
+    /**
+     * @ngdoc method
      * @name isObstructed
      * @methodOf widgetGrid.GridRendering
      * 
@@ -1627,6 +1668,83 @@
       }
       return maxArea;
     }
+    
+    
+    /**
+     * @ngdoc method
+     * @name findAreaToFitSize
+     * @methodOf widgetGrid.GridRendering
+     *
+     * @description
+     * Finds a non-obstructed area for a given size in a given rendering, if any.
+     *
+     * @return {GridArea} Largest empty area, or null
+     */
+    GridRendering.prototype.findAreaToFitSize = function (height, width) {
+      var maxArea = null, currMaxArea = null,
+          maxSurfaceArea = 0, currMaxSurfaceArea = 0;
+      for (var i = 1; i <= this.grid.rows; i++) {
+        for (var j = 1; j <= this.grid.columns; j++) {
+          if (this._isObstructed(i, j)) {
+            continue;
+          }
+
+          var currAreaLimit = (this.grid.rows - i + 1) * (this.grid.columns - j + 1);
+          if (currAreaLimit < maxSurfaceArea) {
+            break;
+          }
+
+          currMaxArea = _findAreaToFitSizeFrom(new GridPoint(i, j), this, height, width);
+          if (currMaxArea !== null) {
+            currMaxSurfaceArea = currMaxArea.getSurfaceArea();
+
+            if (currMaxSurfaceArea > maxSurfaceArea) {
+              maxSurfaceArea = currMaxSurfaceArea;
+              maxArea = currMaxArea;
+            }
+          }
+        }
+      }
+      return maxArea;
+    };
+
+
+    /**
+     * Finds an empty area of the given size that starts at a given position.
+     *
+     * @param {GridPoint} start Start position
+     * @return {GridArea} Largest empty area, or null
+     */
+    function _findAreaToFitSizeFrom(start, rendering, height, width) {
+      if (!angular.isDefined(rendering) || !angular.isDefined(rendering.grid) ||
+          !angular.isNumber(rendering.grid.columns) || !angular.isNumber(rendering.grid.rows)) {
+        return null;
+      }
+
+      var maxArea = null,
+          maxSurfaceArea = 0,
+          endColumn = rendering.grid.columns;
+      for (var i = start.top; i <= rendering.grid.rows; i++) {
+        for (var j = start.left; j <= endColumn; j++) {
+          if (rendering._isObstructed(i, j)) {
+            endColumn = j - 1;
+            continue;
+          }
+
+          var currHeight = (i - start.top + 1),
+              currWidth = (j - start.left + 1),
+              currSurfaceArea = currHeight * currWidth;
+
+          if (currSurfaceArea > maxSurfaceArea) {
+            if (currHeight >= height && currWidth >= width) {
+              maxSurfaceArea = currSurfaceArea;
+              maxArea = new GridArea(start.top, start.left, currHeight, currWidth);
+            }
+          }
+        }
+      }
+      return maxArea;
+    }
 
     return GridRendering;
   }]);
@@ -1832,7 +1950,45 @@
       });
 
       angular.forEach(unpositionedWidgets, function (widget) {
+        var message = '';
+        
+        if (widget.height && widget.height !== 0 &&
+            widget.width && widget.width !== 0) {
+          var nextPosition = rendering.getNextPositionForSize(widget.height, widget.width);
+          
+          if (nextPosition !== null) {
+            renderWithFixedSize(widget);
+          } else {
+            renderWithVariableSize(widget);
+            message = 'Widget will not fit at default size. Adjusted size to fit available space.';
+          }
+        } else {
+          renderWithVariableSize(widget);
+        }
+        
+        if (emitWidgetPositionUpdated !== undefined) {
+          emitWidgetPositionUpdated(widget, message);
+        }
+      });
+      
+      function renderWithFixedSize(widget) {
+        var nextPosition = rendering.getNextPositionForSize(widget.height, widget.width);
+
+        if (nextPosition !== null) {
+          nextPosition.height = widget.height;
+          nextPosition.width = widget.width;
+
+          widget.setPosition(nextPosition);
+          rendering.setWidgetPosition(widget.id, nextPosition);
+        } else {
+          widget.setPosition(GridArea.empty);
+          rendering.setWidgetPosition(widget.id, GridArea.empty);
+        }
+      }
+      
+      function renderWithVariableSize(widget) {
         var nextPosition = rendering.getNextPosition();
+                  
         if (nextPosition !== null) {
           widget.setPosition(nextPosition);
           rendering.setWidgetPosition(widget.id, nextPosition);
@@ -1840,10 +1996,7 @@
           widget.setPosition(GridArea.empty);
           rendering.setWidgetPosition(widget.id, GridArea.empty);
         }
-        if (emitWidgetPositionUpdated !== undefined) {
-          emitWidgetPositionUpdated(widget);
-        }
-      });
+      }
 
       return rendering;
     }
@@ -1933,7 +2086,7 @@ angular.module('widgetGrid').run(['$templateCache', function($templateCache) {
   'use strict';
 
   $templateCache.put('wg-grid',
-    "<div class=wg-grid><div class=wg-grid-widgets ng-transclude></div><div wg-grid-overlay options=gridCtrl.overlayOptions rendering=gridCtrl.rendering highlight=\"gridCtrl.highlight\"></div>"
+    "<div class=wg-grid><div class=wg-grid-widgets ng-transclude></div><div wg-grid-overlay options=gridCtrl.overlayOptions rendering=gridCtrl.rendering highlight=gridCtrl.highlight></div>"
   );
 
 
